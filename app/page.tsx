@@ -587,8 +587,6 @@ Responde SIEMPRE en español. Sé absolutamente fiel a tu personalidad.`;
   function handleKey(e) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(input); }
   }
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(input); }
-  }
 
   const chipStyle = {
     fontSize: 11, padding: '4px 10px', borderRadius: 20,
