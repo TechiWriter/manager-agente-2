@@ -109,6 +109,8 @@ SOBRE DIGITAL HARBOR (contexto crítico):
 - También trabaja contenido de software colaborativo y business media para el ecosistema de Digital Harbor
 
 CUANDO TE PIDEN IDEAS DE PRODUCTO O TECH PARA DH:
+ÁNGULO BUSINESS MEDIA / SOFTWARE COLABORATIVO SOCIAL:
+Además del lente SaaS clásico, DH también compite como Business Media: software colaborativo social pensado para generar enganche dentro de un entorno o sector de trabajo específico, no solo para resolver tareas. Cuando investigas tendencias, sumá este segundo lente: mirá qué hace que plataformas sociales-colaborativas (Slack, Discord, comunidades de LinkedIn, Circle, Notion) generen pertenencia y retención real dentro de un equipo o industria — rituales, gamificación, contenido generado por la comunidad, features que conectan personas y no solo tareas. Proponé cómo Dot, Byte, Sofee o Tap podrían aplicar eso para que el cliente no solo use la herramienta, sino que se enganche con su entorno de trabajo a través de ella.
 Piensas como un CTO-marketer híbrido. Buscas qué está adoptando el mercado de salud/fintech en USA, qué herramientas de IA o automatización están ganando tracción, y propones cómo DH podría implementarlo, posicionarlo o incluso construirlo como feature propio. Siempre con una ventana de implementación realista: ¿en cuánto tiempo? ¿con qué stack? ¿qué problema del cliente resuelve?
 
 Ejemplos del tipo de ideas que das:
@@ -258,6 +260,7 @@ export default function ManagerAgente() {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('');
   const [history, setHistory] = useState([]);
+const [savedNotion, setSavedNotion] = useState({});
   const msgsRef = useRef(null);
   const textareaRef = useRef(null);
 
@@ -558,7 +561,32 @@ Responde SIEMPRE en español. Sé absolutamente fiel a tu personalidad.`;
     setHistory([...currentHistory, { role: 'assistant', content: reply }]);
   }
 
+  async function analyzeNotion(notionData, currentHistory, sys) {
+    // ... (todo lo que ya tenés, sin tocar)
+    setHistory([...currentHistory, { role: 'assistant', content: reply }]);
+  }
+
+  async function handleSaveToNotion(msgIndex, text) {
+    setSavedNotion(prev => ({ ...prev, [msgIndex]: 'saving' }));
+    try {
+      const dateStr = new Date().toLocaleDateString('es-BO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const res = await fetch('/api/notion-create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: `📊 Investigación de mercado — ${dateStr}`,
+          content: text
+        })
+      });
+      setSavedNotion(prev => ({ ...prev, [msgIndex]: res.ok ? 'saved' : 'error' }));
+    } catch (e) {
+      setSavedNotion(prev => ({ ...prev, [msgIndex]: 'error' }));
+    }
+  }
+
   function handleKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(input); }
+  }
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(input); }
   }
 
@@ -627,50 +655,46 @@ Responde SIEMPRE en español. Sé absolutamente fiel a tu personalidad.`;
         <style>{`@keyframes blink { 0%,80%,100%{opacity:.25;transform:scale(.75)} 40%{opacity:1;transform:scale(1)} } @keyframes fadein { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:none} }`}</style>
 
         {messages.map((msg, i) => (
-          <div key={i} style={{ display: 'flex', gap: 9, flexDirection: msg.role === 'user' ? 'row-reverse' : 'row', alignItems: 'flex-start', animation: 'fadein 0.2s ease' }}>
-            {msg.role === 'user' ? (
-              <img src="/avatars/user.png" alt="Tú"
-                style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, marginTop: 1, border: '1.5px solid #e0e0e0' }} />
-            ) : (
-              <img src={AVATARS[p.avatar]} alt={p.name}
-                style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, marginTop: 1, border: `1.5px solid ${p.accentBorder}` }} />
+          <div key={i}>
+            <div style={{ display: 'flex', gap: 9, flexDirection: msg.role === 'user' ? 'row-reverse' : 'row', alignItems: 'flex-start', animation: 'fadein 0.2s ease' }}>
+              {msg.role === 'user' ? (
+                <img src="/avatars/user.png" alt="Tú"
+                  style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, marginTop: 1, border: '1.5px solid #e0e0e0' }} />
+              ) : (
+                <img src={AVATARS[p.avatar]} alt={p.name}
+                  style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, marginTop: 1, border: `1.5px solid ${p.accentBorder}` }} />
+              )}
+              <div style={{
+                maxWidth: '82%', padding: '9px 13px', fontSize: 16, lineHeight: 1.7, borderRadius: 12,
+                background: msg.role === 'user' ? p.accentLight : '#f5f5f5',
+                color: msg.role === 'user' ? p.accentDark : '#111',
+                border: msg.role === 'user' ? `0.5px solid ${p.accentBorder}` : 'none',
+                borderBottomLeftRadius: msg.role === 'agent' ? 3 : 12,
+                borderBottomRightRadius: msg.role === 'user' ? 3 : 12,
+              }}>
+                {formatText(msg.text)}
+              </div>
+            </div>
+            {curP === 1 && msg.role === 'agent' && i > 0 && (
+              <div style={{ marginLeft: 41, marginTop: 4 }}>
+                <button
+                  onClick={() => handleSaveToNotion(i, msg.text)}
+                  disabled={savedNotion[i] === 'saving' || savedNotion[i] === 'saved'}
+                  style={{
+                    fontSize: 11, padding: '3px 9px', borderRadius: 20,
+                    border: `0.5px solid ${p.accentBorder}`, color: p.accent,
+                    background: p.accentLight,
+                    cursor: savedNotion[i] === 'saved' ? 'default' : 'pointer',
+                    opacity: savedNotion[i] === 'saving' ? 0.6 : 1
+                  }}>
+                  {savedNotion[i] === 'saved' ? '✓ Guardado en Notion' :
+                   savedNotion[i] === 'saving' ? 'Guardando...' :
+                   savedNotion[i] === 'error' ? '⚠ Reintentar' :
+                   '💾 Guardar como investigación de mercado'}
+                </button>
+              </div>
             )}
-            <div style={{
-              maxWidth: '82%', padding: '9px 13px', fontSize: 16, lineHeight: 1.7, borderRadius: 12,
-              background: msg.role === 'user' ? p.accentLight : '#f5f5f5',
-              color: msg.role === 'user' ? p.accentDark : '#111',
-              border: msg.role === 'user' ? `0.5px solid ${p.accentBorder}` : 'none',
-              borderBottomLeftRadius: msg.role === 'agent' ? 3 : 12,
-              borderBottomRightRadius: msg.role === 'user' ? 3 : 12,
-            }}>
-              {formatText(msg.text)}
-            </div>
           </div>
-        ))}
-
-        {loading && (
-          <div style={{ display: 'flex', gap: 9, alignItems: 'flex-start', animation: 'fadein 0.2s ease' }}>
-            <img src={AVATARS[p.avatar]} alt={p.name}
-              style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: `1.5px solid ${p.accentBorder}` }} />
-            <div style={{ padding: '10px 14px', background: '#f5f5f5', borderRadius: 12, borderBottomLeftRadius: 3, display: 'flex', alignItems: 'center', gap: 8 }}>
-              {status && <span style={{ fontSize: 11, color: '#888' }}>{status}</span>}
-              <ThinkingDots />
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* QUICK BUTTONS */}
-      <div style={{ padding: '4px 16px 8px', display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-        {p.quick.map(q => (
-          <button key={q} onClick={() => handleSend(q)} disabled={loading}
-            style={{
-              padding: '5px 10px', fontSize: 14, borderRadius: 8, cursor: 'pointer',
-              border: '0.5px solid #e0e0e0', background: '#f5f5f5', color: '#555',
-              transition: 'all .15s', opacity: loading ? 0.5 : 1
-            }}>
-            {q}
-          </button>
         ))}
       </div>
 
